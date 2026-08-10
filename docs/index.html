@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>GeoNet Volcano Cam — Timelapse</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml"/>
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png"/>
+<link rel="apple-touch-icon" href="apple-touch-icon.png"/>
+<meta name="description" content="Play GeoNet volcano webcam stills as a browser timelapse from the public S3 open data bucket."/>
+<meta property="og:type" content="website"/>
+<meta property="og:title" content="GeoNet Volcano Cam — Timelapse"/>
+<meta property="og:description" content="Play GeoNet volcano webcam stills as a browser timelapse from the public S3 open data bucket."/>
+<meta property="og:url" content="https://jajera.github.io/geonet-volcano-timelapse/"/>
+<meta property="og:image" content="https://jajera.github.io/geonet-volcano-timelapse/og.png"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<script>
+  (function(){
+    var stored; try{ stored = localStorage.getItem('geonet-theme'); }catch(e){}
+    var t = (stored==='light'||stored==='dark') ? stored
+      : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    document.documentElement.dataset.theme = t;
+    document.documentElement.style.colorScheme = t;
+  })();
+</script>
+<style>
+  :root,:root[data-theme=dark]{--bg:#0b1016;--panel:#121b24;--panel2:#0f1a23;--line:#20303c;
+    --txt:#dbe6ef;--muted:#8098a9;--accent:#4fd6ff;--folder:#ffce6b;--green:#39ff88;--red:#ff6b6b;
+    --code-bg:#0a1219;--code-fg:#cfe8ff;
+    --mono:ui-monospace,Menlo,Consolas,monospace;color-scheme:dark;}
+  :root[data-theme=light]{--bg:#f3f7fb;--panel:#ffffff;--panel2:#eef3f8;--line:#d5dee7;
+    --txt:#17242f;--muted:#5c6b79;--accent:#0b74c4;--folder:#a5731a;--green:#1a9e57;--red:#c23b3b;
+    --code-bg:#eaf0f6;--code-fg:#12303d;color-scheme:light;}
+  html,body{transition:background .25s ease,color .25s ease}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:14.5px/1.55 system-ui,Segoe UI,Roboto,Arial,sans-serif}
+  header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  h1{margin:0;font-size:18px}
+  .tag{font-size:11px;color:var(--muted);font-family:var(--mono)}
+  .hdr-actions{display:flex;align-items:center;gap:12px;margin-left:auto}
+  .reglink{color:var(--accent);font-size:12px;font-family:var(--mono);text-decoration:none;white-space:nowrap}
+  .reglink:hover{text-decoration:underline}
+  .theme-toggle{display:inline-flex;align-self:center;flex-shrink:0}
+  .theme-toggle__button{display:inline-flex;align-items:center;justify-content:center;width:2.1rem;height:2.1rem;
+    padding:0;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);cursor:pointer}
+  .theme-toggle__button:hover,.theme-toggle__button:focus-visible{color:var(--accent);border-color:var(--muted)}
+  .theme-toggle svg{stroke-linecap:round}
+  .theme-toggle .moon,.theme-toggle .sun,.theme-toggle .sun-beams{transform-origin:center}
+  .theme-toggle .moon,.theme-toggle .sun{fill:currentColor}
+  .theme-toggle .sun-beams{stroke:currentColor;stroke-width:2px}
+  [data-theme=dark] .theme-toggle .sun{transform:scale(1.75)}
+  [data-theme=dark] .theme-toggle .sun-beams{opacity:0}
+  [data-theme=dark] .theme-toggle .moon circle{cx:17;transform:translate(0)}
+  .theme-toggle .sun{transition:transform .4s cubic-bezier(.5,1.25,.75,1.25)}
+  .theme-toggle .sun-beams{transition:opacity .4s ease,transform .4s cubic-bezier(.5,1.25,.75,1.25)}
+  .theme-toggle .moon circle{transition:transform .4s cubic-bezier(.5,1.25,.75,1.25),cx .4s cubic-bezier(.5,1.25,.75,1.25)}
+  .wrap{max-width:1080px;margin:0 auto;padding:16px 22px 60px}
+  details.help{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:12px}
+  details.help summary{cursor:pointer;padding:9px 14px;color:var(--accent);font-size:13px;user-select:none}
+  details.help[open] summary{border-bottom:1px solid var(--line)}
+  .help .body{padding:10px 14px;color:var(--muted);font-size:13px}
+  .cli{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:14px}
+  .cli h4{margin:0 0 8px;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+  .note{color:var(--muted);font-size:12px;margin-top:9px;line-height:1.5}
+  .note code{background:var(--code-bg);color:var(--code-fg);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:11px}
+  .cmd{display:flex;align-items:center;gap:8px;margin:6px 0;min-width:0}
+  .cmd code{flex:1;min-width:0;background:var(--code-bg);border:1px solid var(--line);border-radius:7px;padding:7px 10px;
+    font-family:var(--mono);font-size:12.5px;color:var(--code-fg);overflow-x:auto;white-space:pre}
+  .cmd .lbl{width:78px;color:var(--muted);font-size:11px;font-family:var(--mono);text-align:right;flex:none}
+  button.copy,button.btn,select,label.filebtn{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+    border-radius:7px;padding:7px 12px;cursor:pointer;font-size:13px}
+  button.copy:hover,button.btn:hover,select:hover,label.filebtn:hover{border-color:var(--accent)}
+  button.copy.ok{color:var(--green);border-color:var(--green)}
+  button.btn:disabled{opacity:.4;cursor:default}
+  button.btn.primary{border-color:var(--accent);color:var(--accent)}
+  label.filebtn{display:inline-block}
+  label.filebtn input{display:none}
+  .pickers{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+  .pickers label{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .pickers select{width:100%}
+  .actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+  .stage{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:12px}
+  .stage .frame{aspect-ratio:16/10;background:#000;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+  .stage canvas{width:100%;height:100%;display:block}
+  .stage .placeholder{color:var(--muted);font-size:13px;padding:24px;text-align:center;position:absolute;inset:0;z-index:1;
+    display:flex;align-items:center;justify-content:center;pointer-events:none}
+  .stage .placeholder[hidden]{display:none!important}
+  .stage .hud{position:absolute;left:10px;bottom:10px;z-index:2;background:rgba(0,0,0,.65);color:#fff;
+    font-family:var(--mono);font-size:12px;padding:4px 8px;border-radius:6px;pointer-events:none}
+  .transport{padding:10px 12px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .transport input[type=range]{flex:1;min-width:120px}
+  .meta{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .status{color:var(--muted);font-size:12px;font-family:var(--mono);margin-top:8px}
+  .status.err{color:var(--red)}
+  .spin{color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🌋 GeoNet Volcano Cam</h1>
+  <span class="tag">timelapse from s3://geonet-open-data · ap-southeast-2</span>
+  <div class="hdr-actions">
+    <a class="reglink" href="https://registry.opendata.aws/geonet/" target="_blank" rel="noopener">📖 AWS Open Data registry ↗</a>
+    <theme-toggle class="theme-toggle">
+      <button type="button" class="theme-toggle__button" aria-label="Toggle theme" title="Toggle theme">
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24">
+          <mask class="moon" id="moon-mask">
+            <rect x="0" y="0" width="100%" height="100%" fill="white"></rect>
+            <circle cx="24" cy="10" r="6" fill="black"></circle>
+          </mask>
+          <circle class="sun" cx="12" cy="12" r="6" mask="url(#moon-mask)"></circle>
+          <g class="sun-beams" stroke="currentColor">
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </g>
+        </svg>
+      </button>
+    </theme-toggle>
+  </div>
+</header>
+
+<div class="wrap">
+  <details class="help">
+    <summary>How this works</summary>
+    <div class="body">
+      GeoNet stores volcano webcam stills (JPEG every ~10 minutes) in the public
+      <code>geonet-open-data</code> bucket — not video files. This page lists a station/day,
+      loads those frames, and plays them as a simple browser timelapse. No ffmpeg or player install needed.
+      Optional: download the day folder with AWS CLI, then load the local folder here to play offline.
+    </div>
+  </details>
+
+  <div class="pickers">
+    <label>Year
+      <select id="year"><option value="">loading…</option></select>
+    </label>
+    <label>Station
+      <select id="station" disabled><option value="">—</option></select>
+    </label>
+    <label>Camera
+      <select id="camera" disabled><option value="">—</option></select>
+    </label>
+    <label>Day (YYYY.DOY)
+      <select id="day" disabled><option value="">—</option></select>
+    </label>
+  </div>
+
+  <div class="actions">
+    <button class="btn primary" id="loadBtn" disabled>Load from S3</button>
+    <label class="filebtn">Load local folder
+      <input type="file" id="localFolder" webkitdirectory multiple accept="image/jpeg,.jpg,.jpeg"/>
+    </label>
+    <span class="meta" id="frameMeta">0 frames</span>
+  </div>
+
+  <div class="cli" id="folderCli">
+    <h4>Download this day (optional, for offline)</h4>
+    <div class="cmd"><span class="lbl">sync</span><code id="fc-sync">aws s3 sync s3://geonet-open-data/camera/volcano/images/ … --no-sign-request</code><button class="copy" id="copySync">copy</button></div>
+    <div class="note">🌱 Please download only the day you need. Then use <b>Load local folder</b> to play offline in this browser.</div>
+  </div>
+
+  <div class="stage">
+    <div class="frame">
+      <div class="placeholder" id="placeholder">Pick a station and day, then Load from S3 — or load a local JPEG folder.</div>
+      <canvas id="viewer" hidden></canvas>
+      <div class="hud" id="hud" hidden></div>
+    </div>
+    <div class="transport">
+      <button class="btn" id="playBtn" disabled>Play</button>
+      <button class="btn" id="prevBtn" disabled>◀</button>
+      <button class="btn" id="nextBtn" disabled>▶</button>
+      <input type="range" id="scrub" min="0" max="0" value="0" disabled/>
+      <label class="meta">fps
+        <select id="fps">
+          <option>4</option><option selected>6</option><option>8</option><option>10</option><option>12</option><option>15</option>
+        </select>
+      </label>
+      <span class="meta" id="posMeta">—</span>
+    </div>
+  </div>
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+const BUCKET="geonet-open-data";
+const REGION="ap-southeast-2";
+const BASE=`https://${BUCKET}.s3.${REGION}.amazonaws.com`;
+const ROOT="camera/volcano/images/";
+
+const $=id=>document.getElementById(id);
+function cp(btn,text){
+  navigator.clipboard.writeText(text).then(()=>{
+    const o=btn.textContent; btn.textContent="copied ✓"; btn.classList.add("ok");
+    setTimeout(()=>{btn.textContent=o;btn.classList.remove("ok");},1200);
+  }).catch(()=>{});
+}
+
+async function listPrefixes(prefix){
+  const out=[]; let token=null;
+  do{
+    let url=`${BASE}/?list-type=2&delimiter=/&max-keys=1000&prefix=${encodeURIComponent(prefix)}`;
+    if(token) url+=`&continuation-token=${encodeURIComponent(token)}`;
+    const res=await fetch(url);
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const xml=new DOMParser().parseFromString(await res.text(),"text/xml");
+    xml.querySelectorAll("CommonPrefixes > Prefix").forEach(p=>{
+      const full=p.textContent;
+      if(full.includes(".aws-datasync")) return;
+      out.push(full);
+    });
+    token = xml.querySelector("IsTruncated")?.textContent==="true"
+          ? (xml.querySelector("NextContinuationToken")?.textContent||null) : null;
+  }while(token);
+  return out;
+}
+
+async function listKeys(prefix){
+  const keys=[]; let token=null;
+  do{
+    let url=`${BASE}/?list-type=2&delimiter=/&max-keys=1000&prefix=${encodeURIComponent(prefix)}`;
+    if(token) url+=`&continuation-token=${encodeURIComponent(token)}`;
+    const res=await fetch(url);
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const xml=new DOMParser().parseFromString(await res.text(),"text/xml");
+    xml.querySelectorAll("Contents").forEach(c=>{
+      const key=c.querySelector("Key").textContent;
+      if(key===prefix) return;
+      if(/\.(jpe?g)$/i.test(key)) keys.push(key);
+    });
+    token = xml.querySelector("IsTruncated")?.textContent==="true"
+          ? (xml.querySelector("NextContinuationToken")?.textContent||null) : null;
+  }while(token);
+  keys.sort();
+  return keys;
+}
+
+function fillSelect(sel, items, mapFn, placeholder){
+  sel.innerHTML="";
+  const opt0=document.createElement("option");
+  opt0.value=""; opt0.textContent=placeholder||"—"; sel.appendChild(opt0);
+  items.forEach(it=>{
+    const o=document.createElement("option");
+    const m=mapFn(it); o.value=m.value; o.textContent=m.label; sel.appendChild(o);
+  });
+  sel.disabled=!items.length;
+}
+
+function leaf(prefix){ return prefix.replace(/\/$/,"").split("/").pop(); }
+
+function currentPrefix(){
+  const y=$("year").value, s=$("station").value, c=$("camera").value, d=$("day").value;
+  if(!y||!s||!c||!d) return "";
+  return `${ROOT}${y}/${s}/${c}/${d}/`;
+}
+
+function updateCli(){
+  const p=currentPrefix();
+  $("fc-sync").textContent = p
+    ? `aws s3 sync s3://${BUCKET}/${p} ./${leaf(p)} --no-sign-request`
+    : `aws s3 sync s3://${BUCKET}/${ROOT}<year>/<station>/<cam>/<day>/ ./day --no-sign-request`;
+  $("loadBtn").disabled=!p;
+}
+
+/**
+ * Playback: decode frames to resized ImageBitmaps and paint a single canvas.
+ * Prefer Image + CORS (browser connection pool) over fetch blobs — mass fetch
+ * was flaky against S3. Hard cuts only (crossfade strobes on noisy cams).
+ */
+const DISPLAY_W=1280;
+const BITMAP_AHEAD=12;
+const LOAD_CONC=4;
+
+let frames=[]; // {name, srcUrl?, file?, bitmap?}
+let idx=0, playing=false, playToken=0;
+const canvas=$("viewer");
+const ctx=canvas.getContext("2d",{alpha:false});
+
+function stop(){
+  playing=false;
+  playToken++;
+  $("playBtn").textContent="Play";
+}
+
+function frameLabel(name){
+  const m=name.match(/\.(\d{3})\.(\d{2})(\d{2})\./);
+  return m ? `day ${m[1]} · ${m[2]}:${m[3]}` : name;
+}
+
+function frameInterval(){
+  return 1000/Math.max(1, +$("fps").value||6);
+}
+
+function releaseBitmap(f){
+  if(f?.bitmap){ try{ f.bitmap.close(); }catch(e){} f.bitmap=null; }
+}
+
+function clearFrames(){
+  stop();
+  frames.forEach(f=>{
+    releaseBitmap(f);
+    if(f.objectUrl) URL.revokeObjectURL(f.objectUrl);
+  });
+  frames=[]; idx=0;
+  canvas.hidden=true;
+  if(canvas.width){ ctx.fillStyle="#000"; ctx.fillRect(0,0,canvas.width,canvas.height); }
+}
+
+function loadImage(url, retries=3){
+  return new Promise(async (resolve, reject)=>{
+    let last;
+    for(let attempt=0; attempt<retries; attempt++){
+      try{
+        const im=await new Promise((res,rej)=>{
+          const el=new Image();
+          el.crossOrigin="anonymous";
+          el.onload=()=>res(el);
+          el.onerror=()=>rej(new Error("image load failed"));
+          el.src=url+(url.includes("?")?"&":"?")+"r="+attempt;
+        });
+        resolve(im); return;
+      }catch(e){
+        last=e;
+        await new Promise(r=>setTimeout(r, 120*(attempt+1)));
+      }
+    }
+    reject(last||new Error("image load failed"));
+  });
+}
+
+async function ensureBitmap(f){
+  if(f.bitmap) return f.bitmap;
+  let source;
+  if(f.file){
+    source=f.file;
+  }else if(f.srcUrl){
+    source=await loadImage(f.srcUrl);
+  }else{
+    throw new Error("no source");
+  }
+  try{
+    f.bitmap=await createImageBitmap(source,{
+      resizeWidth:DISPLAY_W,
+      resizeQuality:"medium"
+    });
+  }catch(e){
+    f.bitmap=await createImageBitmap(source);
+  }
+  return f.bitmap;
+}
+
+async function warmAround(center){
+  const jobs=[];
+  for(let i=Math.max(0,center); i<Math.min(frames.length, center+BITMAP_AHEAD); i++){
+    if(!frames[i].bitmap && !frames[i]._loading){
+      frames[i]._loading=true;
+      jobs.push(
+        ensureBitmap(frames[i])
+          .catch(()=>null)
+          .finally(()=>{ frames[i]._loading=false; })
+      );
+    }
+  }
+  for(let i=0;i<frames.length;i++){
+    if(i<center-2 || i>=center+BITMAP_AHEAD+2) releaseBitmap(frames[i]);
+  }
+  if(jobs.length) await Promise.all(jobs);
+}
+
+function paint(bitmap){
+  if(!bitmap) return;
+  const frame=canvas.parentElement;
+  const cssW=Math.max(1, frame.clientWidth|0);
+  const cssH=Math.max(1, frame.clientHeight|0);
+  const dpr=Math.min(2, window.devicePixelRatio||1);
+  const tw=(cssW*dpr)|0, th=(cssH*dpr)|0;
+  if(canvas.width!==tw || canvas.height!==th){
+    canvas.width=tw; canvas.height=th;
+  }
+  ctx.fillStyle="#000";
+  ctx.fillRect(0,0,tw,th);
+  const scale=Math.min(tw/bitmap.width, th/bitmap.height);
+  const dw=bitmap.width*scale, dh=bitmap.height*scale;
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality="high";
+  ctx.drawImage(bitmap, (tw-dw)/2, (th-dh)/2, dw, dh);
+}
+
+async function show(i){
+  if(!frames.length) return;
+  const want=Math.max(0, Math.min(frames.length-1, i));
+  idx=want;
+  const f=frames[want];
+
+  $("placeholder").hidden=true;
+  $("hud").hidden=false;
+  canvas.hidden=false;
+
+  warmAround(want);
+  try{
+    const bm=await ensureBitmap(f);
+    if(idx!==want) return;
+    paint(bm);
+  }catch(e){ /* keep previous paint */ }
+
+  $("scrub").value=String(want);
+  $("posMeta").textContent=`${want+1}/${frames.length} · ${f.name}`;
+  $("hud").textContent=`${want+1}/${frames.length} · ${frameLabel(f.name)}`;
+}
+
+function setTransport(has, src){
+  $("frameMeta").textContent=(has?`${frames.length} frame(s)`:"0 frames")+(src?` · ${src}`:"");
+  $("playBtn").disabled=!has;
+  $("prevBtn").disabled=!has;
+  $("nextBtn").disabled=!has;
+  $("scrub").disabled=!has;
+  $("scrub").max=String(Math.max(0, frames.length-1));
+  $("scrub").value="0";
+  if(!has){
+    $("hud").hidden=true;
+    canvas.hidden=true;
+    $("placeholder").hidden=false;
+    $("placeholder").textContent="No JPEG frames found.";
+    $("posMeta").textContent="—";
+  }
+}
+
+async function decodeWindow(list, from, count, onProgress){
+  let done=0;
+  const end=Math.min(list.length, from+count);
+  for(let i=from;i<end;i+=LOAD_CONC){
+    const slice=list.slice(i, Math.min(end, i+LOAD_CONC));
+    await Promise.all(slice.map(async f=>{
+      try{ await ensureBitmap(f); }catch(e){ f.err=e; }
+      done++;
+      if(onProgress) onProgress(from+done, list.length);
+    }));
+  }
+}
+
+async function playLoop(token){
+  let nextAt=performance.now();
+  while(playing && token===playToken){
+    if(idx>=frames.length-1){ stop(); return; }
+    const target=idx+1;
+    await warmAround(target);
+    if(!playing || token!==playToken) return;
+    // skip frames that failed to decode
+    if(!frames[target].bitmap){
+      idx=target;
+      continue;
+    }
+
+    nextAt += frameInterval();
+    await show(target);
+    if(!playing || token!==playToken) return;
+
+    const delay=Math.max(0, nextAt-performance.now());
+    await new Promise(r=>{
+      if(delay<=0){ requestAnimationFrame(()=>r()); return; }
+      setTimeout(()=>requestAnimationFrame(()=>r()), delay);
+    });
+    if(performance.now()-nextAt > frameInterval()) nextAt=performance.now();
+  }
+}
+
+function play(){
+  if(!frames.length) return;
+  if(playing){ stop(); return; }
+  if(idx>=frames.length-1) show(0);
+  playing=true;
+  $("playBtn").textContent="Pause";
+  playLoop(++playToken);
+}
+
+async function loadFromS3(){
+  const prefix=currentPrefix();
+  if(!prefix) return;
+  clearFrames();
+  $("status").classList.remove("err");
+  $("status").innerHTML='<span class="spin">listing frames…</span>';
+  try{
+    const keys=await listKeys(prefix);
+    frames=keys.map(k=>({
+      name:k.split("/").pop(),
+      srcUrl:`${BASE}/${encodeURI(k)}`
+    }));
+    setTransport(!!frames.length, "s3");
+    if(!frames.length){ $("status").textContent="no JPEGs in this day"; return; }
+
+    // Decode first frame ASAP, then warm a playable head window, rest on demand
+    $("status").innerHTML=`<span class="spin">decoding 1/${frames.length}…</span>`;
+    await decodeWindow(frames, 0, 1, (n,t)=>{
+      $("status").innerHTML=`<span class="spin">decoding ${n}/${t}…</span>`;
+    });
+    await show(0);
+
+    const head=Math.min(frames.length, BITMAP_AHEAD+4);
+    $("status").innerHTML=`<span class="spin">buffering ${head}/${frames.length}…</span>`;
+    await decodeWindow(frames, 1, head-1, (n,t)=>{
+      $("status").innerHTML=`<span class="spin">buffering ${n}/${t}…</span>`;
+    });
+    const ok=frames.filter(f=>f.bitmap).length;
+    $("status").textContent=`ready · ${ok} buffered / ${frames.length} · canvas ${DISPLAY_W}px · s3://${BUCKET}/${prefix}`;
+  }catch(err){
+    $("status").classList.add("err");
+    $("status").textContent="error: "+err.message;
+  }
+}
+
+async function loadLocal(fileList){
+  clearFrames();
+  const files=[...fileList].filter(f=>/\.(jpe?g)$/i.test(f.name));
+  files.sort((a,b)=>a.name.localeCompare(b.name, undefined, {numeric:true}));
+  frames=files.map(f=>({name:f.name, file:f, objectUrl:URL.createObjectURL(f)}));
+  setTransport(!!frames.length, "local");
+  $("status").classList.remove("err");
+  if(!frames.length){ $("status").textContent="no local JPEGs"; return; }
+  $("status").innerHTML=`<span class="spin">decoding…</span>`;
+  await decodeWindow(frames, 0, Math.min(frames.length, BITMAP_AHEAD+4), (n,t)=>{
+    $("status").innerHTML=`<span class="spin">decoding ${n}/${t}…</span>`;
+  });
+  await show(0);
+  $("status").textContent=`ready · ${frames.filter(f=>f.bitmap).length}/${frames.length} local · canvas ${DISPLAY_W}px`;
+}
+
+async function initYears(){
+  $("status").innerHTML='<span class="spin">loading years…</span>';
+  try{
+    const years=(await listPrefixes(ROOT)).map(leaf).filter(x=>/^\d{4}$/.test(x)).sort().reverse();
+    fillSelect($("year"), years, y=>({value:y,label:y}), "select year");
+    if(years[0]){ $("year").value=years[0]; await onYear(); }
+    $("status").textContent="";
+  }catch(err){
+    $("status").classList.add("err");
+    $("status").textContent="error loading years: "+err.message;
+  }
+}
+
+async function onYear(){
+  fillSelect($("station"),[],()=>({}),"—");
+  fillSelect($("camera"),[],()=>({}),"—");
+  fillSelect($("day"),[],()=>({}),"—");
+  updateCli();
+  const y=$("year").value; if(!y) return;
+  fillSelect($("station"), (await listPrefixes(`${ROOT}${y}/`)).map(leaf).sort(), s=>({value:s,label:s}), "select station");
+}
+
+async function onStation(){
+  fillSelect($("camera"),[],()=>({}),"—");
+  fillSelect($("day"),[],()=>({}),"—");
+  updateCli();
+  const y=$("year").value, s=$("station").value; if(!y||!s) return;
+  fillSelect($("camera"), (await listPrefixes(`${ROOT}${y}/${s}/`)).map(leaf).sort(), c=>({value:c,label:c}), "select camera");
+}
+
+async function onCamera(){
+  fillSelect($("day"),[],()=>({}),"—");
+  updateCli();
+  const y=$("year").value, s=$("station").value, c=$("camera").value; if(!y||!s||!c) return;
+  const days=(await listPrefixes(`${ROOT}${y}/${s}/${c}/`)).map(leaf).sort().reverse();
+  fillSelect($("day"), days, d=>({value:d,label:d}), "select day");
+  if(days[0]){ $("day").value=days[0]; updateCli(); }
+}
+
+$("year").onchange=()=>onYear().catch(e=>{ $("status").classList.add("err"); $("status").textContent=e.message; });
+$("station").onchange=()=>onStation().catch(e=>{ $("status").classList.add("err"); $("status").textContent=e.message; });
+$("camera").onchange=()=>onCamera().catch(e=>{ $("status").classList.add("err"); $("status").textContent=e.message; });
+$("day").onchange=updateCli;
+$("loadBtn").onclick=()=>loadFromS3();
+$("localFolder").onchange=e=>{ if(e.target.files?.length) loadLocal(e.target.files); };
+$("playBtn").onclick=play;
+$("prevBtn").onclick=()=>{ stop(); show(idx-1); };
+$("nextBtn").onclick=()=>{ stop(); show(idx+1); };
+$("scrub").oninput=()=>{ stop(); show(+$("scrub").value); };
+$("fps").onchange=()=>{ if(playing){ stop(); play(); } };
+$("copySync").onclick=()=>cp($("copySync"), $("fc-sync").textContent);
+
+(function(){
+  const storageKey='geonet-theme';
+  const norm=t=>(t==='light'||t==='dark')?t:'auto';
+  const sys=()=>matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
+  const stored=()=>{try{return norm(localStorage.getItem(storageKey));}catch(e){return 'auto';}};
+  const persist=t=>{try{(t==='light'||t==='dark')?localStorage.setItem(storageKey,t):localStorage.removeItem(storageKey);}catch(e){}};
+  function apply(t){
+    const r=t==='auto'?sys():t;
+    document.documentElement.dataset.theme=r;
+    document.documentElement.style.colorScheme=r;
+    persist(t==='auto'?r:t);
+    document.querySelectorAll('.theme-toggle__button').forEach(b=>{
+      b.setAttribute('aria-label',`Switch to ${r==='dark'?'light':'dark'} theme`);
+      b.setAttribute('title',`Switch to ${r==='dark'?'light':'dark'} theme`);
+    });
+  }
+  if(!customElements.get('theme-toggle')){
+    customElements.define('theme-toggle', class extends HTMLElement{
+      connectedCallback(){
+        const b=this.querySelector('button');
+        b && b.addEventListener('click',()=>{
+          const cur=document.documentElement.dataset.theme==='light'?'light':'dark';
+          apply(cur==='dark'?'light':'dark');
+        });
+      }
+    });
+  }
+  apply(stored()==='auto'?sys():stored());
+  matchMedia('(prefers-color-scheme: light)').addEventListener('change',()=>{ if(stored()==='auto') apply('auto'); });
+})();
+
+updateCli();
+initYears();
+</script>
+</body>
+</html>

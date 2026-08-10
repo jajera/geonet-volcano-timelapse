@@ -1,0 +1,49 @@
+name: CI - Validate and Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check index.html exists and is non-empty
+        run: |
+          test -s docs/index.html
+          bytes=$(wc -c < docs/index.html)
+          echo "docs/index.html is ${bytes} bytes"
+          test "$bytes" -gt 1024
+
+      - name: Validate HTML (informational)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tidy
+          tidy -q -e docs/index.html || true
+
+      - name: Sanity-check required markers
+        run: |
+          grep -q 'BUCKET="geonet-open-data"' docs/index.html
+          grep -q 'REGION="ap-southeast-2"' docs/index.html
+          grep -q 'amazonaws.com' docs/index.html
+          grep -q "camera/volcano/images" docs/index.html
+          grep -q "theme-toggle" docs/index.html
+          grep -q -- "--no-sign-request" docs/index.html
+          grep -q "createImageBitmap" docs/index.html
+          echo "required markers present"
+
+      - name: File size guard
+        run: |
+          find docs -name "*.html" -size +1M -exec echo "warning: {} is larger than 1MB" \;
+
+      - name: Summary
+        run: echo "validation complete"
