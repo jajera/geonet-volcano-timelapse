@@ -32,7 +32,9 @@ jobs:
 
       - name: Sanity-check required markers
         run: |
-          grep -q "geonet-open-data.s3.ap-southeast-2.amazonaws.com" docs/index.html
+          grep -q 'BUCKET="geonet-open-data"' docs/index.html
+          grep -q 'REGION="ap-southeast-2"' docs/index.html
+          grep -q 'amazonaws.com' docs/index.html
           grep -q "camera/volcano/images" docs/index.html
           grep -q "theme-toggle" docs/index.html
           grep -q -- "--no-sign-request" docs/index.html
