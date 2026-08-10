@@ -42,13 +42,6 @@ aws s3 sync \
 Then use **Load local folder** and select that directory. Please download only
 the day you need.
 
-## Local development
-
-```bash
-python3 -m http.server -d docs 8155
-# open http://127.0.0.1:8155/
-```
-
 ## Deployment
 
 Pushes to `main` run the CI workflow; on success, the reusable
