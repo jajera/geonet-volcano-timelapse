@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <title>GeoNet Volcano Cam — Timelapse</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml"/>
 <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png"/>
@@ -95,28 +95,86 @@
   .pickers label{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
   .pickers select{width:100%}
   .actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
-  .stage{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:12px}
+  .stage{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:12px}
   .stage .frame{aspect-ratio:16/10;background:#000;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
   .stage canvas{width:100%;height:100%;display:block}
   .stage .placeholder{color:var(--muted);font-size:13px;padding:24px;text-align:center;position:absolute;inset:0;z-index:1;
     display:flex;align-items:center;justify-content:center;pointer-events:none}
   .stage .placeholder[hidden]{display:none!important}
-  .stage .hud{position:absolute;left:10px;bottom:10px;z-index:2;background:rgba(0,0,0,.65);color:#fff;
-    font-family:var(--mono);font-size:12px;padding:4px 8px;border-radius:6px;pointer-events:none}
-  .transport{padding:10px 12px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-  .transport input[type=range]{flex:1;min-width:120px}
-  .transport .spacer{flex:1;min-width:0}
+  .stage .hud{position:absolute;left:10px;top:10px;bottom:auto;z-index:2;background:rgba(0,0,0,.55);color:#fff;
+    font-family:var(--mono);font-size:11px;padding:3px 7px;border-radius:6px;pointer-events:none}
+  /* Floating lightweight control cluster over the frame */
+  .transport{
+    position:absolute;left:10px;right:10px;bottom:10px;z-index:6;
+    display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+    padding:6px 8px;border:1px solid rgba(255,255,255,.14);border-radius:14px;
+    background:rgba(8,12,18,.48);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    box-shadow:0 8px 28px rgba(0,0,0,.28);pointer-events:auto}
+  .transport input[type=range]{flex:1 1 100px;min-width:72px;accent-color:var(--accent)}
+  .transport .btn{
+    min-height:2.1rem;padding:5px 10px;font-size:12px;border-radius:999px;
+    background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.16);color:#fff;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  .transport .btn:hover,.transport .btn:focus-visible{border-color:var(--accent);color:var(--accent)}
+  .transport .btn:disabled{opacity:.35}
+  .transport .meta{color:rgba(255,255,255,.78)}
+  .transport select{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.16);color:#fff;
+    border-radius:999px;padding:4px 8px;font-size:12px}
+  .transport #fsBtn{margin-left:auto}
+  .transport #posMeta{max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .meta{font-family:var(--mono);font-size:12px;color:var(--muted)}
   .status{color:var(--muted);font-size:12px;font-family:var(--mono);margin-top:8px}
   .status.err{color:var(--red)}
   .spin{color:var(--accent)}
   .stage:fullscreen,.stage:-webkit-full-screen{
-    width:100%;height:100%;border:none;border-radius:0;margin:0;background:#000;
-    display:flex;flex-direction:column}
-  .stage:fullscreen .frame,.stage:-webkit-full-screen .frame{
-    flex:1;aspect-ratio:auto;min-height:0}
-  .stage:fullscreen .transport,.stage:-webkit-full-screen .transport{
-    background:var(--panel);flex:none}
+    position:relative;width:100%;height:100%;height:100dvh;max-height:100dvh;
+    border:none;border-radius:0;margin:0;background:#000;
+    display:flex;flex-direction:column;overflow:hidden}
+  .stage.is-fs:not(:fullscreen):not(:-webkit-full-screen){
+    position:fixed;inset:0;z-index:1000;width:auto;height:auto;
+    max-height:none;border:none;border-radius:0;margin:0;background:#000;
+    display:flex;flex-direction:column;overflow:hidden}
+  .stage:fullscreen .frame,.stage:-webkit-full-screen .frame,
+  .stage.is-fs:not(:fullscreen):not(:-webkit-full-screen) .frame{
+    flex:1 1 auto;aspect-ratio:auto;min-height:0;width:100%;height:auto}
+  .stage:fullscreen .hud,.stage:-webkit-full-screen .hud,
+  .stage.is-fs:not(:fullscreen):not(:-webkit-full-screen) .hud{
+    top:max(10px, env(safe-area-inset-top,0px))}
+  .stage:fullscreen .transport,.stage:-webkit-full-screen .transport,
+  .stage.is-fs:not(:fullscreen):not(:-webkit-full-screen) .transport{
+    left:max(12px, env(safe-area-inset-left,0px));
+    right:max(12px, env(safe-area-inset-right,0px));
+    bottom:max(12px, env(safe-area-inset-bottom,0px));
+    background:rgba(8,12,18,.42)}
+  body.fs-lock{overflow:hidden;touch-action:none}
+  /* Phone portrait / narrow */
+  @media (max-width:640px){
+    .transport{left:8px;right:8px;bottom:8px;padding:6px 7px;gap:5px}
+    .transport input[type=range]{flex:1 1 100%;min-width:100%;order:5}
+    .transport #posMeta{display:none}
+    .transport #fsBtn{margin-left:0}
+    .transport .btn{min-height:2.25rem;padding:6px 11px}
+  }
+  /* Phone landscape: short viewport — Chrome chrome is worse here; keep one slim row */
+  @media (orientation:landscape) and (max-height:500px){
+    .wrap{padding:8px 12px 24px}
+    .gallery{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:10px}
+    .stage .frame{aspect-ratio:auto;height:min(72dvh, calc(100dvh - 24px));max-height:72dvh}
+    .stage:fullscreen .frame,.stage:-webkit-full-screen .frame,
+    .stage.is-fs:not(:fullscreen):not(:-webkit-full-screen) .frame{
+      height:auto;max-height:none}
+    .transport{
+      flex-wrap:nowrap;left:max(8px, env(safe-area-inset-left,0px));
+      right:max(8px, env(safe-area-inset-right,0px));
+      bottom:max(8px, env(safe-area-inset-bottom,0px));
+      padding:4px 6px;gap:4px;border-radius:12px}
+    .transport input[type=range]{flex:1 1 auto;min-width:64px;width:auto;order:0}
+    .transport #posMeta{display:none}
+    .transport label.meta{font-size:0;letter-spacing:0}
+    .transport label.meta select{font-size:11px}
+    .transport #fsBtn{margin-left:0}
+    .transport .btn{min-height:1.9rem;padding:3px 9px;font-size:11px}
+  }
 </style>
 </head>
 <body>
@@ -184,13 +242,13 @@
       <button class="btn" id="prevBtn" disabled>◀</button>
       <button class="btn" id="nextBtn" disabled>▶</button>
       <input type="range" id="scrub" min="0" max="0" value="0" disabled/>
-      <label class="meta">fps
+      <label class="meta" for="fps">fps
         <select id="fps">
           <option>4</option><option selected>6</option><option>8</option><option>10</option><option>12</option><option>15</option>
         </select>
       </label>
       <span class="meta" id="posMeta">—</span>
-      <button class="btn" id="fsBtn" title="Fullscreen" aria-label="Fullscreen">Fullscreen</button>
+      <button class="btn" id="fsBtn" title="Fullscreen" aria-label="Fullscreen">Full</button>
     </div>
   </div>
   <div class="status" id="status"></div>
@@ -530,30 +588,70 @@ function play(){
 function fsElement(){
   return document.fullscreenElement||document.webkitFullscreenElement||null;
 }
-function isFs(){ return fsElement()===stage; }
-function updateFsBtn(){
-  const on=isFs();
-  $("fsBtn").textContent=on?"Exit full":"Fullscreen";
+function isFs(){ return fsElement()===stage || stage.classList.contains("is-fs"); }
+function setFsUi(on){
+  stage.classList.toggle("is-fs", on);
+  document.body.classList.toggle("fs-lock", on);
+  $("fsBtn").textContent=on?"Exit":"Full";
   $("fsBtn").setAttribute("aria-label", on?"Exit fullscreen":"Fullscreen");
+  $("fsBtn").title=on?"Exit fullscreen":"Fullscreen";
 }
-async function toggleFullscreen(){
-  try{
-    if(isFs()){
-      if(document.exitFullscreen) await document.exitFullscreen();
-      else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
-    }else{
-      if(stage.requestFullscreen) await stage.requestFullscreen();
-      else if(stage.webkitRequestFullscreen) stage.webkitRequestFullscreen();
-    }
-  }catch(e){
-    $("status").classList.add("err");
-    $("status").textContent="fullscreen unavailable: "+e.message;
-  }
-  updateFsBtn();
+function syncFsFromNative(){
+  const native=fsElement()===stage;
+  if(native){ stage._cssFs=false; setFsUi(true); }
+  else if(!stage._cssFs) setFsUi(false);
   if(frames.length) show(idx);
 }
-document.addEventListener("fullscreenchange",()=>{ updateFsBtn(); if(frames.length) show(idx); });
-document.addEventListener("webkitfullscreenchange",()=>{ updateFsBtn(); if(frames.length) show(idx); });
+async function toggleFullscreen(){
+  if(isFs()){
+    stage._cssFs=false;
+    try{
+      if(fsElement()===stage){
+        if(document.exitFullscreen) await document.exitFullscreen();
+        else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+      }
+    }catch(e){ /* ignore */ }
+    setFsUi(false);
+    if(frames.length) show(idx);
+    return;
+  }
+  let native=false;
+  try{
+    if(stage.requestFullscreen){ await stage.requestFullscreen(); native=fsElement()===stage; }
+    else if(stage.webkitRequestFullscreen){ stage.webkitRequestFullscreen(); native=true; }
+  }catch(e){ native=false; }
+  if(!native){
+    stage._cssFs=true;
+    setFsUi(true);
+  }else{
+    setFsUi(true);
+  }
+  if(frames.length) show(idx);
+}
+document.addEventListener("fullscreenchange", syncFsFromNative);
+document.addEventListener("webkitfullscreenchange", syncFsFromNative);
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape" && stage._cssFs){
+    stage._cssFs=false;
+    setFsUi(false);
+    if(frames.length) show(idx);
+  }
+});
+// Repaint on rotate / Chrome URL-bar resize (landscape is especially jumpy)
+let resizeTick=0;
+function onViewportChange(){
+  const t=++resizeTick;
+  requestAnimationFrame(()=>{
+    if(t!==resizeTick) return;
+    if(frames.length) show(idx);
+  });
+}
+window.addEventListener("resize", onViewportChange);
+window.addEventListener("orientationchange", onViewportChange);
+if(window.visualViewport){
+  visualViewport.addEventListener("resize", onViewportChange);
+  visualViewport.addEventListener("scroll", onViewportChange);
+}
 
 function markActiveCard(year, station, camera){
   document.querySelectorAll(".cam-card").forEach(btn=>{
