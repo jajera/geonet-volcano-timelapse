@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="GeoNet Volcano Cam Timelapse">
+  <rect width="1200" height="630" fill="#0b1016"/>
+  <g fill="none" stroke-linecap="round">
+    <path d="M80 92 Q280 58 420 88 T760 80 T1120 90" stroke="#39ff88" stroke-width="8" opacity="0.55"/>
+    <path d="M80 112 Q280 78 420 108 T760 100 T1120 110" stroke="#4fd6ff" stroke-width="6.5" opacity="0.5"/>
+    <path d="M80 132 Q280 98 420 128 T760 120 T1120 130" stroke="#c06bff" stroke-width="5" opacity="0.4"/>
+  </g>
+  <rect x="96" y="210" width="220" height="220" rx="48" fill="#121b24" stroke="#20303c" stroke-width="4"/>
+  <path d="M146 390 L206 268 L230 318 L258 248 L314 390 Z" fill="#0f1a23" stroke="#4fd6ff" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M220 268 Q232 210 244 268" fill="none" stroke="#ff6b6b" stroke-width="6" stroke-linecap="round" opacity="0.9"/>
+  <circle cx="232" cy="208" r="12" fill="#ffce6b"/>
+  <circle cx="232" cy="208" r="22" fill="none" stroke="#ffce6b" stroke-width="3" opacity="0.65"/>
+  <path d="M140 390 H320" stroke="#39ff88" stroke-width="5" stroke-linecap="round" opacity="0.45"/>
+  <text x="380" y="270" fill="#dbe6ef" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="64" font-weight="700">GeoNet Volcano Cam</text>
+  <text x="380" y="330" fill="#8098a9" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="32" font-weight="500">Browser timelapse from open data stills</text>
+  <text x="380" y="382" fill="#4fd6ff" font-family="DejaVu Sans Mono, Liberation Mono, monospace" font-size="24">s3://geonet-open-data · camera/volcano · public</text>
+  <line x1="380" y1="420" x2="1080" y2="420" stroke="#20303c" stroke-width="2"/>
+  <text x="380" y="468" fill="#8098a9" font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="24">play · scrub · local folder · dark/light theme</text>
+  <text x="380" y="560" fill="#5c6b79" font-family="DejaVu Sans Mono, Liberation Mono, monospace" font-size="20">jajera.github.io/geonet-volcano-timelapse</text>
+</svg>
