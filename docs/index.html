@@ -56,10 +56,10 @@
   .theme-toggle .sun-beams{transition:opacity .4s ease,transform .4s cubic-bezier(.5,1.25,.75,1.25)}
   .theme-toggle .moon circle{transition:transform .4s cubic-bezier(.5,1.25,.75,1.25),cx .4s cubic-bezier(.5,1.25,.75,1.25)}
   .wrap{max-width:1080px;margin:0 auto;padding:16px 22px 60px}
-  details.help{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:12px}
-  details.help summary{cursor:pointer;padding:9px 14px;color:var(--accent);font-size:13px;user-select:none}
-  details.help[open] summary{border-bottom:1px solid var(--line)}
-  .help .body{padding:10px 14px;color:var(--muted);font-size:13px}
+  details.help,details.archive{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:12px}
+  details.help summary,details.archive summary{cursor:pointer;padding:9px 14px;color:var(--accent);font-size:13px;user-select:none}
+  details.help[open] summary,details.archive[open] summary{border-bottom:1px solid var(--line)}
+  .help .body,.archive .body{padding:10px 14px;color:var(--muted);font-size:13px}
   .cli{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:14px}
   .cli h4{margin:0 0 8px;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
   .note{color:var(--muted);font-size:12px;margin-top:9px;line-height:1.5}
@@ -76,6 +76,21 @@
   button.btn.primary{border-color:var(--accent);color:var(--accent)}
   label.filebtn{display:inline-block}
   label.filebtn input{display:none}
+  .gallery-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:4px 0 10px;flex-wrap:wrap}
+  .gallery-head h2{margin:0;font-size:13px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .gallery-head .meta{font-size:12px}
+  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px;margin-bottom:16px}
+  .cam-card{appearance:none;display:flex;flex-direction:column;padding:0;margin:0;border:1px solid var(--line);
+    border-radius:10px;overflow:hidden;background:var(--panel);color:inherit;cursor:pointer;text-align:left;
+    font:inherit;transition:border-color .15s ease,box-shadow .15s ease}
+  .cam-card:hover,.cam-card:focus-visible{border-color:var(--accent);outline:none;box-shadow:0 0 0 1px var(--accent)}
+  .cam-card.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .cam-card .thumb{aspect-ratio:16/10;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .cam-card .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .cam-card .thumb .miss{color:var(--muted);font-size:11px;font-family:var(--mono);padding:8px;text-align:center}
+  .cam-card .info{padding:8px 10px;display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--line)}
+  .cam-card .info .name{font-size:13px;font-weight:600;color:var(--txt)}
+  .cam-card .info .when{font-size:11px;font-family:var(--mono);color:var(--muted)}
   .pickers{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
   .pickers label{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
   .pickers select{width:100%}
@@ -90,10 +105,18 @@
     font-family:var(--mono);font-size:12px;padding:4px 8px;border-radius:6px;pointer-events:none}
   .transport{padding:10px 12px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:10px;align-items:center}
   .transport input[type=range]{flex:1;min-width:120px}
+  .transport .spacer{flex:1;min-width:0}
   .meta{font-family:var(--mono);font-size:12px;color:var(--muted)}
   .status{color:var(--muted);font-size:12px;font-family:var(--mono);margin-top:8px}
   .status.err{color:var(--red)}
   .spin{color:var(--accent)}
+  .stage:fullscreen,.stage:-webkit-full-screen{
+    width:100%;height:100%;border:none;border-radius:0;margin:0;background:#000;
+    display:flex;flex-direction:column}
+  .stage:fullscreen .frame,.stage:-webkit-full-screen .frame{
+    flex:1;aspect-ratio:auto;min-height:0}
+  .stage:fullscreen .transport,.stage:-webkit-full-screen .transport{
+    background:var(--panel);flex:none}
 </style>
 </head>
 <body>
@@ -131,44 +154,28 @@
     <summary>How this works</summary>
     <div class="body">
       GeoNet stores volcano webcam stills (JPEG every ~10 minutes) in the public
-      <code>geonet-open-data</code> bucket — not video files. This page lists a station/day,
-      loads those frames, and plays them as a simple browser timelapse. No ffmpeg or player install needed.
+      <code>geonet-open-data</code> bucket — not video files. This page shows each camera’s latest
+      still; pick one to load that day’s frames as a browser timelapse. No ffmpeg or player install needed.
       Optional: download the day folder with AWS CLI, then load the local folder here to play offline.
     </div>
   </details>
 
-  <div class="pickers">
-    <label>Year
-      <select id="year"><option value="">loading…</option></select>
-    </label>
-    <label>Station
-      <select id="station" disabled><option value="">—</option></select>
-    </label>
-    <label>Camera
-      <select id="camera" disabled><option value="">—</option></select>
-    </label>
-    <label>Day (YYYY.DOY)
-      <select id="day" disabled><option value="">—</option></select>
-    </label>
+  <div class="gallery-head">
+    <h2>Latest cameras</h2>
+    <span class="meta" id="galleryMeta">loading…</span>
   </div>
+  <div class="gallery" id="gallery" aria-live="polite"></div>
 
   <div class="actions">
-    <button class="btn primary" id="loadBtn" disabled>Load from S3</button>
+    <span class="meta" id="frameMeta">0 frames</span>
     <label class="filebtn">Load local folder
       <input type="file" id="localFolder" webkitdirectory multiple accept="image/jpeg,.jpg,.jpeg"/>
     </label>
-    <span class="meta" id="frameMeta">0 frames</span>
   </div>
 
-  <div class="cli" id="folderCli">
-    <h4>Download this day (optional, for offline)</h4>
-    <div class="cmd"><span class="lbl">sync</span><code id="fc-sync">aws s3 sync s3://geonet-open-data/camera/volcano/images/ … --no-sign-request</code><button class="copy" id="copySync">copy</button></div>
-    <div class="note">🌱 Please download only the day you need. Then use <b>Load local folder</b> to play offline in this browser.</div>
-  </div>
-
-  <div class="stage">
+  <div class="stage" id="stage">
     <div class="frame">
-      <div class="placeholder" id="placeholder">Pick a station and day, then Load from S3 — or load a local JPEG folder.</div>
+      <div class="placeholder" id="placeholder">Pick a camera above to load its latest day — or browse the archive.</div>
       <canvas id="viewer" hidden></canvas>
       <div class="hud" id="hud" hidden></div>
     </div>
@@ -183,9 +190,38 @@
         </select>
       </label>
       <span class="meta" id="posMeta">—</span>
+      <button class="btn" id="fsBtn" title="Fullscreen" aria-label="Fullscreen">Fullscreen</button>
     </div>
   </div>
   <div class="status" id="status"></div>
+
+  <details class="archive" id="archive">
+    <summary>Browse archive / pick another day</summary>
+    <div class="body">
+      <div class="pickers">
+        <label>Year
+          <select id="year"><option value="">loading…</option></select>
+        </label>
+        <label>Station
+          <select id="station" disabled><option value="">—</option></select>
+        </label>
+        <label>Camera
+          <select id="camera" disabled><option value="">—</option></select>
+        </label>
+        <label>Day (YYYY.DOY)
+          <select id="day" disabled><option value="">—</option></select>
+        </label>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="loadBtn" disabled>Load from S3</button>
+      </div>
+      <div class="cli" id="folderCli">
+        <h4>Download this day (optional, for offline)</h4>
+        <div class="cmd"><span class="lbl">sync</span><code id="fc-sync">aws s3 sync s3://geonet-open-data/camera/volcano/images/ … --no-sign-request</code><button class="copy" id="copySync">copy</button></div>
+        <div class="note">🌱 Please download only the day you need. Then use <b>Load local folder</b> above to play offline in this browser.</div>
+      </div>
+    </div>
+  </details>
 </div>
 
 <script>
@@ -268,6 +304,21 @@ function updateCli(){
   $("loadBtn").disabled=!p;
 }
 
+function lookslikeCamera(name, station){
+  // e.g. DISC.01 — not the station folder itself or stray prefixes
+  return name!==station && /^[A-Z0-9]+\.\d+$/i.test(name);
+}
+
+function frameLabel(name){
+  const m=name.match(/\.(\d{3})\.(\d{2})(\d{2})\./);
+  return m ? `day ${m[1]} · ${m[2]}:${m[3]}` : name;
+}
+
+function thumbLabel(name){
+  const m=name.match(/(\d{4})\.(\d{3})\.(\d{2})(\d{2})/);
+  return m ? `${m[1]}.${m[2]} · ${m[3]}:${m[4]}` : name;
+}
+
 /**
  * Playback: decode frames to resized ImageBitmaps and paint a single canvas.
  * Prefer Image + CORS (browser connection pool) over fetch blobs — mass fetch
@@ -279,22 +330,15 @@ const LOAD_CONC=4;
 
 let frames=[]; // {name, srcUrl?, file?, bitmap?}
 let idx=0, playing=false, playToken=0;
+let selectingCamera=false;
 const canvas=$("viewer");
 const ctx=canvas.getContext("2d",{alpha:false});
+const stage=$("stage");
 
 function stop(){
   playing=false;
   playToken++;
   $("playBtn").textContent="Play";
-}
-
-function frameLabel(name){
-  const m=name.match(/\.(\d{3})\.(\d{2})(\d{2})\./);
-  return m ? `day ${m[1]} · ${m[2]}:${m[3]}` : name;
-}
-
-function frameInterval(){
-  return 1000/Math.max(1, +$("fps").value||6);
 }
 
 function releaseBitmap(f){
@@ -470,6 +514,10 @@ async function playLoop(token){
   }
 }
 
+function frameInterval(){
+  return 1000/Math.max(1, +$("fps").value||6);
+}
+
 function play(){
   if(!frames.length) return;
   if(playing){ stop(); return; }
@@ -477,6 +525,130 @@ function play(){
   playing=true;
   $("playBtn").textContent="Pause";
   playLoop(++playToken);
+}
+
+function fsElement(){
+  return document.fullscreenElement||document.webkitFullscreenElement||null;
+}
+function isFs(){ return fsElement()===stage; }
+function updateFsBtn(){
+  const on=isFs();
+  $("fsBtn").textContent=on?"Exit full":"Fullscreen";
+  $("fsBtn").setAttribute("aria-label", on?"Exit fullscreen":"Fullscreen");
+}
+async function toggleFullscreen(){
+  try{
+    if(isFs()){
+      if(document.exitFullscreen) await document.exitFullscreen();
+      else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }else{
+      if(stage.requestFullscreen) await stage.requestFullscreen();
+      else if(stage.webkitRequestFullscreen) stage.webkitRequestFullscreen();
+    }
+  }catch(e){
+    $("status").classList.add("err");
+    $("status").textContent="fullscreen unavailable: "+e.message;
+  }
+  updateFsBtn();
+  if(frames.length) show(idx);
+}
+document.addEventListener("fullscreenchange",()=>{ updateFsBtn(); if(frames.length) show(idx); });
+document.addEventListener("webkitfullscreenchange",()=>{ updateFsBtn(); if(frames.length) show(idx); });
+
+function markActiveCard(year, station, camera){
+  document.querySelectorAll(".cam-card").forEach(btn=>{
+    const on=btn.dataset.year===year && btn.dataset.station===station && btn.dataset.camera===camera;
+    btn.classList.toggle("active", on);
+  });
+}
+
+async function resolveLatestForCamera(year, station, camera){
+  const days=(await listPrefixes(`${ROOT}${year}/${station}/${camera}/`)).map(leaf).sort();
+  if(!days.length) return null;
+  const day=days[days.length-1];
+  const keys=await listKeys(`${ROOT}${year}/${station}/${camera}/${day}/`);
+  if(!keys.length) return null;
+  const key=keys[keys.length-1];
+  return {year, station, camera, day, key, name:key.split("/").pop(), srcUrl:`${BASE}/${encodeURI(key)}`};
+}
+
+function renderCamCard(cam){
+  const btn=document.createElement("button");
+  btn.type="button";
+  btn.className="cam-card";
+  btn.dataset.year=cam.year;
+  btn.dataset.station=cam.station;
+  btn.dataset.camera=cam.camera;
+  btn.dataset.day=cam.day;
+  btn.innerHTML=`
+    <div class="thumb">${cam.srcUrl
+      ? `<img src="${cam.srcUrl}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"/>`
+      : `<span class="miss">no still</span>`}</div>
+    <div class="info">
+      <span class="name">${cam.station} · ${cam.camera}</span>
+      <span class="when">${cam.name?thumbLabel(cam.name):"—"}</span>
+    </div>`;
+  const img=btn.querySelector("img");
+  if(img) img.onerror=()=>{ img.replaceWith(Object.assign(document.createElement("span"),{className:"miss",textContent:"unavailable"})); };
+  btn.onclick=()=>selectFromGallery(cam).catch(e=>{
+    $("status").classList.add("err");
+    $("status").textContent=e.message;
+  });
+  return btn;
+}
+
+async function loadCameraGallery(year){
+  const gallery=$("gallery");
+  gallery.innerHTML="";
+  $("galleryMeta").textContent=`scanning ${year}…`;
+  const stations=(await listPrefixes(`${ROOT}${year}/`)).map(leaf).filter(s=>s&&s!==year).sort();
+  const cams=[];
+  await Promise.all(stations.map(async station=>{
+    const camNames=(await listPrefixes(`${ROOT}${year}/${station}/`)).map(leaf)
+      .filter(c=>lookslikeCamera(c, station)).sort();
+    await Promise.all(camNames.map(async camera=>{
+      try{
+        const latest=await resolveLatestForCamera(year, station, camera);
+        if(latest) cams.push(latest);
+      }catch(e){ /* skip broken cam */ }
+    }));
+  }));
+  cams.sort((a,b)=> (a.station+a.camera).localeCompare(b.station+b.camera));
+  if(!cams.length){
+    $("galleryMeta").textContent="no cameras found";
+    gallery.innerHTML=`<div class="meta">No latest stills for ${year}.</div>`;
+    return;
+  }
+  $("galleryMeta").textContent=`${cams.length} camera${cams.length===1?"":"s"} · ${year}`;
+  const frag=document.createDocumentFragment();
+  cams.forEach(c=>frag.appendChild(renderCamCard(c)));
+  gallery.appendChild(frag);
+}
+
+async function selectFromGallery(cam){
+  selectingCamera=true;
+  try{
+    markActiveCard(cam.year, cam.station, cam.camera);
+    // Ensure dropdowns match without cascading overwrites fighting us
+    if($("year").value!==cam.year){
+      $("year").value=cam.year;
+      await onYear();
+    }
+    if($("station").value!==cam.station){
+      $("station").value=cam.station;
+      await onStation();
+    }
+    if($("camera").value!==cam.camera){
+      $("camera").value=cam.camera;
+      await onCamera();
+    }
+    $("day").value=cam.day;
+    updateCli();
+    stage.scrollIntoView({behavior:"smooth", block:"nearest"});
+    await loadFromS3();
+  }finally{
+    selectingCamera=false;
+  }
 }
 
 async function loadFromS3(){
@@ -535,11 +707,17 @@ async function initYears(){
   try{
     const years=(await listPrefixes(ROOT)).map(leaf).filter(x=>/^\d{4}$/.test(x)).sort().reverse();
     fillSelect($("year"), years, y=>({value:y,label:y}), "select year");
-    if(years[0]){ $("year").value=years[0]; await onYear(); }
+    if(years[0]){
+      $("year").value=years[0];
+      await onYear();
+      $("status").innerHTML='<span class="spin">loading latest cameras…</span>';
+      await loadCameraGallery(years[0]);
+    }
     $("status").textContent="";
   }catch(err){
     $("status").classList.add("err");
     $("status").textContent="error loading years: "+err.message;
+    $("galleryMeta").textContent="failed";
   }
 }
 
@@ -557,7 +735,9 @@ async function onStation(){
   fillSelect($("day"),[],()=>({}),"—");
   updateCli();
   const y=$("year").value, s=$("station").value; if(!y||!s) return;
-  fillSelect($("camera"), (await listPrefixes(`${ROOT}${y}/${s}/`)).map(leaf).sort(), c=>({value:c,label:c}), "select camera");
+  const cams=(await listPrefixes(`${ROOT}${y}/${s}/`)).map(leaf)
+    .filter(c=>lookslikeCamera(c,s)).sort();
+  fillSelect($("camera"), cams, c=>({value:c,label:c}), "select camera");
 }
 
 async function onCamera(){
@@ -567,12 +747,13 @@ async function onCamera(){
   const days=(await listPrefixes(`${ROOT}${y}/${s}/${c}/`)).map(leaf).sort().reverse();
   fillSelect($("day"), days, d=>({value:d,label:d}), "select day");
   if(days[0]){ $("day").value=days[0]; updateCli(); }
+  if(!selectingCamera) markActiveCard(y,s,c);
 }
 
 $("year").onchange=()=>onYear().catch(e=>{ $("status").classList.add("err"); $("status").textContent=e.message; });
 $("station").onchange=()=>onStation().catch(e=>{ $("status").classList.add("err"); $("status").textContent=e.message; });
 $("camera").onchange=()=>onCamera().catch(e=>{ $("status").classList.add("err"); $("status").textContent=e.message; });
-$("day").onchange=updateCli;
+$("day").onchange=()=>{ updateCli(); markActiveCard($("year").value,$("station").value,$("camera").value); };
 $("loadBtn").onclick=()=>loadFromS3();
 $("localFolder").onchange=e=>{ if(e.target.files?.length) loadLocal(e.target.files); };
 $("playBtn").onclick=play;
@@ -580,6 +761,7 @@ $("prevBtn").onclick=()=>{ stop(); show(idx-1); };
 $("nextBtn").onclick=()=>{ stop(); show(idx+1); };
 $("scrub").oninput=()=>{ stop(); show(+$("scrub").value); };
 $("fps").onchange=()=>{ if(playing){ stop(); play(); } };
+$("fsBtn").onclick=()=>toggleFullscreen();
 $("copySync").onclick=()=>cp($("copySync"), $("fc-sync").textContent);
 
 (function(){
