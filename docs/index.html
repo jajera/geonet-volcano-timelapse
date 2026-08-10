@@ -79,15 +79,24 @@
   .gallery-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:4px 0 10px;flex-wrap:wrap}
   .gallery-head h2{margin:0;font-size:13px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);font-weight:600}
   .gallery-head .meta{font-size:12px}
+  .gallery-head[hidden],.gallery[hidden]{display:none!important}
   .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px;margin-bottom:16px}
   .cam-card{appearance:none;display:flex;flex-direction:column;padding:0;margin:0;border:1px solid var(--line);
     border-radius:10px;overflow:hidden;background:var(--panel);color:inherit;cursor:pointer;text-align:left;
     font:inherit;transition:border-color .15s ease,box-shadow .15s ease}
   .cam-card:hover,.cam-card:focus-visible{border-color:var(--accent);outline:none;box-shadow:0 0 0 1px var(--accent)}
   .cam-card.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
-  .cam-card .thumb{aspect-ratio:16/10;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .cam-card .thumb{aspect-ratio:16/10;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
   .cam-card .thumb img{width:100%;height:100%;object-fit:cover;display:block}
   .cam-card .thumb .miss{color:var(--muted);font-size:11px;font-family:var(--mono);padding:8px;text-align:center}
+  .cam-card .ribbon{
+    position:absolute;top:12px;left:-34px;z-index:2;width:120px;padding:4px 0;text-align:center;
+    transform:rotate(-45deg);background:var(--folder);color:#1a1208;
+    font:700 10px/1.2 var(--mono);letter-spacing:.4px;text-transform:uppercase;
+    box-shadow:0 1px 6px rgba(0,0,0,.35);pointer-events:none}
+  .cam-card.stale{border-color:color-mix(in srgb, var(--folder) 45%, var(--line))}
+  .cam-card.stale .thumb img{filter:saturate(.55) brightness(.82)}
+  .cam-card.stale .info .when{color:var(--folder)}
   .cam-card .info{padding:8px 10px;display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--line)}
   .cam-card .info .name{font-size:13px;font-weight:600;color:var(--txt)}
   .cam-card .info .when{font-size:11px;font-family:var(--mono);color:var(--muted)}
@@ -223,6 +232,12 @@
     <span class="meta" id="galleryMeta">loading…</span>
   </div>
   <div class="gallery" id="gallery" aria-live="polite"></div>
+
+  <div class="gallery-head" id="staleHead" hidden>
+    <h2>Inactive cameras</h2>
+    <span class="meta" id="staleMeta">last still older than 7 days</span>
+  </div>
+  <div class="gallery" id="staleGallery" hidden></div>
 
   <div class="actions">
     <span class="meta" id="frameMeta">0 frames</span>
@@ -375,6 +390,23 @@ function frameLabel(name){
 function thumbLabel(name){
   const m=name.match(/(\d{4})\.(\d{3})\.(\d{2})(\d{2})/);
   return m ? `${m[1]}.${m[2]} · ${m[3]}:${m[4]}` : name;
+}
+
+/** Parse GeoNet still name …YYYY.DOY.HHMM… → Date (UTC approximation; fine for week-scale staleness). */
+function parseFrameTime(name){
+  const m=String(name||"").match(/(\d{4})\.(\d{3})\.(\d{2})(\d{2})/);
+  if(!m) return null;
+  const y=+m[1], doy=+m[2], hh=+m[3], mm=+m[4];
+  if(!y||doy<1||doy>366||hh>23||mm>59) return null;
+  return new Date(Date.UTC(y, 0, doy, hh, mm, 0, 0));
+}
+
+const STALE_AFTER_MS=7*24*60*60*1000; // 1 week without a newer still → inactive
+
+function isStaleCam(cam, now=Date.now()){
+  const t=parseFrameTime(cam?.name);
+  if(!t) return true;
+  return (now - t.getTime()) > STALE_AFTER_MS;
 }
 
 /**
@@ -673,15 +705,18 @@ async function resolveLatestForCamera(year, station, camera){
 function renderCamCard(cam){
   const btn=document.createElement("button");
   btn.type="button";
-  btn.className="cam-card";
+  btn.className="cam-card"+(cam.stale?" stale":"");
   btn.dataset.year=cam.year;
   btn.dataset.station=cam.station;
   btn.dataset.camera=cam.camera;
   btn.dataset.day=cam.day;
   btn.innerHTML=`
-    <div class="thumb">${cam.srcUrl
-      ? `<img src="${cam.srcUrl}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"/>`
-      : `<span class="miss">no still</span>`}</div>
+    <div class="thumb">
+      ${cam.stale?`<span class="ribbon" aria-hidden="true">Inactive</span>`:""}
+      ${cam.srcUrl
+        ? `<img src="${cam.srcUrl}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"/>`
+        : `<span class="miss">no still</span>`}
+    </div>
     <div class="info">
       <span class="name">${cam.station} · ${cam.camera}</span>
       <span class="when">${cam.name?thumbLabel(cam.name):"—"}</span>
@@ -695,10 +730,23 @@ function renderCamCard(cam){
   return btn;
 }
 
+function fillGallery(el, cams){
+  el.innerHTML="";
+  const frag=document.createDocumentFragment();
+  cams.forEach(c=>frag.appendChild(renderCamCard(c)));
+  el.appendChild(frag);
+}
+
 async function loadCameraGallery(year){
   const gallery=$("gallery");
+  const staleGallery=$("staleGallery");
+  const staleHead=$("staleHead");
   gallery.innerHTML="";
+  staleGallery.innerHTML="";
+  staleHead.hidden=true;
+  staleGallery.hidden=true;
   $("galleryMeta").textContent=`scanning ${year}…`;
+  $("staleMeta").textContent="last still older than 7 days";
   const stations=(await listPrefixes(`${ROOT}${year}/`)).map(leaf).filter(s=>s&&s!==year).sort();
   const cams=[];
   await Promise.all(stations.map(async station=>{
@@ -711,16 +759,28 @@ async function loadCameraGallery(year){
       }catch(e){ /* skip broken cam */ }
     }));
   }));
-  cams.sort((a,b)=> (a.station+a.camera).localeCompare(b.station+b.camera));
+  const now=Date.now();
+  cams.forEach(c=>{ c.stale=isStaleCam(c, now); });
+  const active=cams.filter(c=>!c.stale).sort((a,b)=> (a.station+a.camera).localeCompare(b.station+b.camera));
+  const stale=cams.filter(c=>c.stale).sort((a,b)=> (a.station+a.camera).localeCompare(b.station+b.camera));
+
   if(!cams.length){
     $("galleryMeta").textContent="no cameras found";
     gallery.innerHTML=`<div class="meta">No latest stills for ${year}.</div>`;
     return;
   }
-  $("galleryMeta").textContent=`${cams.length} camera${cams.length===1?"":"s"} · ${year}`;
-  const frag=document.createDocumentFragment();
-  cams.forEach(c=>frag.appendChild(renderCamCard(c)));
-  gallery.appendChild(frag);
+  $("galleryMeta").textContent=active.length
+    ? `${active.length} camera${active.length===1?"":"s"} · ${year}`
+    : `none active · ${year}`;
+  if(active.length) fillGallery(gallery, active);
+  else gallery.innerHTML=`<div class="meta">No cameras with a still in the last 7 days.</div>`;
+
+  if(stale.length){
+    staleHead.hidden=false;
+    staleGallery.hidden=false;
+    $("staleMeta").textContent=`${stale.length} · last still older than 7 days`;
+    fillGallery(staleGallery, stale);
+  }
 }
 
 async function selectFromGallery(cam){
