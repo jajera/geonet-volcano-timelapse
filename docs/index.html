@@ -76,10 +76,19 @@
   button.btn.primary{border-color:var(--accent);color:var(--accent)}
   label.filebtn{display:inline-block}
   label.filebtn input{display:none}
-  .gallery-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:4px 0 10px;flex-wrap:wrap}
-  .gallery-head h2{margin:0;font-size:13px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .gallery-section{margin:0 0 6px}
+  .gallery-section[hidden]{display:none!important}
+  .gallery-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:4px 0 10px;flex-wrap:wrap;
+    cursor:pointer;list-style:none;user-select:none}
+  .gallery-head::-webkit-details-marker{display:none}
+  .gallery-head::before{content:"";width:.45em;height:.45em;margin-right:2px;border-right:1.5px solid var(--muted);
+    border-bottom:1.5px solid var(--muted);transform:rotate(-45deg);transition:transform .15s ease;flex:none;
+    align-self:center}
+  .gallery-section[open]>.gallery-head::before{transform:rotate(45deg)}
+  .gallery-head h2{margin:0;font-size:13px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);font-weight:600;
+    flex:1 1 auto}
   .gallery-head .meta{font-size:12px}
-  .gallery-head[hidden],.gallery[hidden]{display:none!important}
+  .gallery-head:hover h2,.gallery-head:focus-visible h2{color:var(--accent)}
   .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px;margin-bottom:16px}
   .cam-card{appearance:none;display:flex;flex-direction:column;padding:0;margin:0;border:1px solid var(--line);
     border-radius:10px;overflow:hidden;background:var(--panel);color:inherit;cursor:pointer;text-align:left;
@@ -227,17 +236,21 @@
     </div>
   </details>
 
-  <div class="gallery-head">
-    <h2>Latest cameras</h2>
-    <span class="meta" id="galleryMeta">loading…</span>
-  </div>
-  <div class="gallery" id="gallery" aria-live="polite"></div>
+  <details class="gallery-section" id="latestSection" open>
+    <summary class="gallery-head">
+      <h2>Latest cameras</h2>
+      <span class="meta" id="galleryMeta">loading…</span>
+    </summary>
+    <div class="gallery" id="gallery" aria-live="polite"></div>
+  </details>
 
-  <div class="gallery-head" id="staleHead" hidden>
-    <h2>Inactive cameras</h2>
-    <span class="meta" id="staleMeta">last still older than 7 days</span>
-  </div>
-  <div class="gallery" id="staleGallery" hidden></div>
+  <details class="gallery-section" id="staleSection" hidden>
+    <summary class="gallery-head">
+      <h2>Inactive cameras</h2>
+      <span class="meta" id="staleMeta">last still older than 7 days</span>
+    </summary>
+    <div class="gallery" id="staleGallery"></div>
+  </details>
 
   <div class="actions">
     <span class="meta" id="frameMeta">0 frames</span>
@@ -740,11 +753,11 @@ function fillGallery(el, cams){
 async function loadCameraGallery(year){
   const gallery=$("gallery");
   const staleGallery=$("staleGallery");
-  const staleHead=$("staleHead");
+  const staleSection=$("staleSection");
   gallery.innerHTML="";
   staleGallery.innerHTML="";
-  staleHead.hidden=true;
-  staleGallery.hidden=true;
+  staleSection.hidden=true;
+  staleSection.open=false;
   $("galleryMeta").textContent=`scanning ${year}…`;
   $("staleMeta").textContent="last still older than 7 days";
   const stations=(await listPrefixes(`${ROOT}${year}/`)).map(leaf).filter(s=>s&&s!==year).sort();
@@ -776,8 +789,8 @@ async function loadCameraGallery(year){
   else gallery.innerHTML=`<div class="meta">No cameras with a still in the last 7 days.</div>`;
 
   if(stale.length){
-    staleHead.hidden=false;
-    staleGallery.hidden=false;
+    staleSection.hidden=false;
+    staleSection.open=false;
     $("staleMeta").textContent=`${stale.length} · last still older than 7 days`;
     fillGallery(staleGallery, stale);
   }
